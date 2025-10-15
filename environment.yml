@@ -1,0 +1,15 @@
+name: mlops-env
+channels:
+  - conda-forge
+dependencies:
+  - python=3.10
+  - numpy=1.23.5
+  - pandas=1.5.3
+  - scikit-learn=1.2.2
+  - joblib=1.2.0
+  - pip
+  - pip:
+      - azureml-defaults
+      - fastapi
+      - uvicorn
+      - opencensus-ext-azure==1.1.9

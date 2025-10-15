@@ -1,0 +1,18 @@
+$schema: https://azuremlschemas.azureedge.net/latest/managedOnlineDeployment.schema.json
+name: fraud-deployment
+endpoint_name: scotia-fraud-detection-endpoint
+model: azureml:fraud-detection-model:2
+code_configuration:
+  code: ./src
+  scoring_script: score.py
+environment:
+  # image: mcr.microsoft.com/azureml/minimal-ubuntu22.04-py312-cpu-inference:latest
+  # image: scotiabankmlopsacr.azurecr.io/fraud-api:latest
+  image: mcr.microsoft.com/azureml/openmpi4.1.0-ubuntu20.04:latest
+  conda_file: environment.yml
+instance_type: Standard_DS2_v2
+instance_count: 1
+# scale_settings:
+#   type: automatic
+#   min_instances: 1
+#   max_instances: 5
