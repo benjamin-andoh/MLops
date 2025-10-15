@@ -1,0 +1,29 @@
+name: Retrain and Deploy Model
+
+on:
+    schedule:
+        - cron: "0 5 * * 1" # every Monday at 05:00 UTC
+    workflow_dispatch:
+
+jobs:
+    retrain:
+        runs-on: ubuntu-latest
+        steps:
+            - uses: actions/checkout@v3
+            - name: Set up Python 3.10
+              uses: actions/setup-python@v4
+              with:
+                  python-version: "3.10"
+            - name: Install dependencies
+              run: |
+                  python -m pip install --upgrade pip
+                  pip install -r requirements.txt
+            - name: Retrain model
+              run: |
+                  python src/train.py --features data/features/feat_v1.parquet --output_dir models/run_local
+            - name: Register model in Azure ML
+              run: |
+                  az ml model create --name fraud-detection-model --path models/run_local/model.joblib --workspace-name mlops-scotia-ws2 --resource-group mlops-rg
+            - name: Redeploy model
+              run: |
+                  az ml online-deployment update --name fraud-deployment --endpoint-name scotia-fraud-detection-endpoint --workspace-name mlops-scotia-ws2 --resource-group mlops-rg --file deployment.yml

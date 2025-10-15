@@ -190,6 +190,29 @@ az ml online-endpoint show --name fraud-endpoint --resource-group mlops-rg --wor
 az ml online-endpoint invoke --name fraud-endpoint --request-file test_data.json
 ```
 
+## Automated Retraining and Deployment
+
+This project includes a scheduled GitHub Actions workflow (`.github/workflows/retrain-and-deploy.yml`) that retrains the fraud detection model, registers it in Azure ML, and redeploys it to the managed endpoint.
+
+**How it works:**
+- Runs every Monday at 05:00 UTC (or manually via GitHub Actions > Run workflow)
+- Retrains the model using `src/train.py` and the latest features data
+- Registers the new model in Azure ML workspace
+- Updates the endpoint deployment with the new model
+
+**Customizing:**
+- Change the schedule by editing the `cron` value in the workflow YAML
+- Update training data path or script arguments as needed
+- Monitor workflow runs and logs in the GitHub Actions tab
+
+**Manual trigger:**
+- Go to GitHub Actions > Retrain and Deploy Model > Run workflow
+
+**Requirements:**
+- Azure credentials must be set in repository secrets as `AZURE_CREDENTIALS`
+- Training script must output model to `models/run_local/model.joblib`
+- Deployment configuration is read from `deployment.yml`
+
 ---
 
 For questions or contributions, please contact the project maintainer.

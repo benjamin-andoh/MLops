@@ -1,13 +1,52 @@
+# Python
 venv/
 __pycache__/
 *.pyc
-.DS_Store
-.env    
-.idea/
-.vscode/
-*.log
-*.sqlite3
-instance/
-migrations/
+*.pyo
+*.pyd
+.Python
 *.egg-info/
 dist/
+build/
+
+# Environment
+.env
+.env.local
+
+# IDEs
+.DS_Store
+.idea/
+.vscode/
+
+# Logs
+*.log
+
+# Database
+*.sqlite3
+
+# Azure ML
+.azureml/
+mlruns/
+outputs/
+logs/
+
+# Models (large files - should use DVC or Azure ML)
+models/run_local/*.pkl
+models/run_local/*.joblib
+*.h5
+*.pth
+
+# Data (should be version controlled separately)
+data/raw/*.csv
+data/processed/
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Temporary files
+*.tmp
+*.bak
+*.swp
+*~
