@@ -69,6 +69,14 @@ jobs:
       - name: 🧪 Smoke Test Endpoint
         run: |
           echo "Running post-deployment health check..."
+          if [ -z "${{ secrets.SCORING_URI }}" ]; then
+            echo "❌ SCORING_URI secret not set."
+            exit 1
+          fi
+          if [ -z "${{ secrets.AZURE_API_KEY }}" ]; then
+            echo "❌ AZURE_API_KEY secret not set."
+            exit 1
+          fi
           curl -X POST "${{ secrets.SCORING_URI }}" \
             -H "Content-Type: application/json" \
             -H "Authorization: Bearer ${{ secrets.AZURE_API_KEY }}" \
