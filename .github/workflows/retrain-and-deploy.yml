@@ -1,36 +1,91 @@
+# File: .github/workflows/retrain-and-deploy.yml
 name: Retrain and Deploy Model
 
 on:
-    schedule:
-        - cron: "0 5 * * 1" # every Monday at 05:00 UTC
-    workflow_dispatch:
+  schedule:
+    - cron: "0 5 * * 1" # Every Monday at 05:00 UTC
+  workflow_dispatch:      # Manual trigger available via GitHub UI
+
+permissions:
+  contents: read
+  actions: read
+  id-token: write
 
 jobs:
-    retrain:
-        runs-on: ubuntu-latest
-        steps:
-            - uses: actions/checkout@v3
-            - name: Set up Python 3.10
-              uses: actions/setup-python@v4
-              with:
-                  python-version: "3.10"
-            - name: Install dependencies
-              run: |
-                  python -m pip install --upgrade pip
-                  pip install -r requirements.txt
-                        - name: Azure Login
-                            uses: azure/login@v1
-                            with:
-                                creds: ${{ secrets.AZURE_CREDENTIALS }}
-                                    - name: Install Azure ML CLI
-                                        run: |
-                                            az extension add -n ml --yes || az extension update -n ml
-            - name: Retrain model
-              run: |
-                  python src/train.py --features data/features/feat_v1.parquet --output_dir models/run_local
-            - name: Register model in Azure ML
-              run: |
-                  az ml model create --name fraud-detection-model --path models/run_local/model.joblib --workspace-name mlops-scotia-ws2 --resource-group mlops-rg
-            - name: Redeploy model
-              run: |
-                  az ml online-deployment update --name fraud-deployment --endpoint-name scotia-fraud-detection-endpoint --workspace-name mlops-scotia-ws2 --resource-group mlops-rg --file deployment.yml
+  retrain-and-deploy:
+    name: Weekly Model Retraining & Deployment
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: 🧩 Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: 🐍 Set Up Python 3.10
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.10"
+          cache: "pip"
+
+      - name: 📦 Install Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: 🔐 Azure Login
+        uses: azure/login@v2
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: ☁️ Install Azure ML CLI
+        run: |
+          az extension add -n ml --yes || az extension update -n ml
+          az configure --defaults workspace=mlops-scotia-ws2 group=mlops-rg
+
+      - name: 🧠 Retrain Model
+        run: |
+          echo "Starting model retraining..."
+          python src/train.py \
+            --features data/features/feat_v1.parquet \
+            --output_dir models/run_local
+
+      - name: 🗂️ Register Model in Azure ML
+        run: |
+          az ml model create \
+            --name fraud-detection-model \
+            --path models/run_local/model.joblib \
+            --workspace-name mlops-scotia-ws2 \
+            --resource-group mlops-rg
+
+      - name: 🚀 Redeploy Model Endpoint
+        run: |
+          az ml online-deployment update \
+            --name fraud-deployment \
+            --endpoint-name scotia-fraud-detection-endpoint \
+            --workspace-name mlops-scotia-ws2 \
+            --resource-group mlops-rg \
+            --file deployment.yml
+
+      - name: 🧪 Smoke Test Endpoint
+        run: |
+          echo "Running post-deployment health check..."
+          curl -X POST "${{ secrets.SCORING_URI }}" \
+            -H "Content-Type: application/json" \
+            -H "Authorization: Bearer ${{ secrets.AZURE_API_KEY }}" \
+            -d '{"sample_input": "test"}' \
+            --fail
+
+      - name: 📤 Upload Logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: retrain-deploy-logs
+          path: models/run_local/
+
+      - name: ✅ Notify Success
+        if: success()
+        run: echo "✅ Model retraining and deployment completed successfully."
+
+      - name: ⚠️ Notify Failure
+        if: failure()
+        run: echo "❌ Retrain or deployment failed. Please check workflow logs."

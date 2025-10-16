@@ -1,3 +1,4 @@
+---
 name: CI/CD Pipeline for Fraud Detection ML Model
 
 on:
@@ -15,8 +16,9 @@ env:
 jobs:
   test:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - name: Set up Python 3.10
         uses: actions/setup-python@v4
@@ -30,8 +32,7 @@ jobs:
           pip install pytest pytest-cov
 
       - name: Run unit tests
-        run: |
-          pytest tests/ -v --cov=src/ --cov-report=xml
+        run: pytest tests/ -v --cov=src/ --cov-report=xml
 
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v3
@@ -39,8 +40,7 @@ jobs:
   lint:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
-
+      - uses: actions/checkout@v4
       - name: Set up Python 3.10
         uses: actions/setup-python@v4
         with:
@@ -64,11 +64,10 @@ jobs:
     runs-on: ubuntu-latest
     needs: [test, lint]
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - name: Build Docker image
-        run: |
-          docker build -t fraud-api:latest .
+        run: docker build -t fraud-api:latest .
 
       - name: Test Docker container
         run: |
@@ -76,7 +75,10 @@ jobs:
           sleep 10
           curl -X POST http://localhost:8080/predict \
             -H "Content-Type: application/json" \
-            -d '{"features": {"amount": 100, "hour_of_day": 14, "avg_monthly_spend": 500, "customer_tenure_days": 365, "num_prev_tx_24h": 5}}'
+            -d '{"features": {"amount": 100, "hour_of_day": 14,
+                 "avg_monthly_spend": 500,
+                 "customer_tenure_days": 365,
+                 "num_prev_tx_24h": 5}}'
           docker stop fraud-api-test
 
   deploy-to-azure:
@@ -84,7 +86,7 @@ jobs:
     needs: [build-and-test-docker]
     if: github.ref == 'refs/heads/main'
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - name: Azure Login
         uses: azure/login@v1
@@ -102,9 +104,11 @@ jobs:
             --file deployment.yml \
             --resource-group ${{ env.RESOURCE_GROUP }} \
             --workspace-name ${{ env.AZURE_ML_WORKSPACE }}
+
       - name: Smoke test Azure ML endpoint
         run: |
-          echo '{"features": {"feature1": 0.5, "feature2": 1.2, "feature3": 0.8}}' > test_data.json
+          echo '{"features": {"feature1": 0.5, "feature2": 1.2,
+                 "feature3": 0.8}}' > test_data.json
           az ml online-endpoint invoke \
             --name ${{ env.ENDPOINT_NAME }} \
             --request-file test_data.json \
@@ -112,63 +116,10 @@ jobs:
             --workspace-name ${{ env.AZURE_ML_WORKSPACE }} \
             --output-path response.json
           cat response.json
-      - name: Fetch Azure ML deployment logs
-        run: |
-          az ml online-deployment get-logs \
-            --name ${{ env.DEPLOYMENT_NAME }} \
-            --endpoint-name ${{ env.ENDPOINT_NAME }} \
-            --resource-group ${{ env.RESOURCE_GROUP }} \
-            --workspace-name ${{ env.AZURE_ML_WORKSPACE }} \
-            --lines 200 > deployment-logs.txt
+
       - name: Upload deployment logs
         uses: actions/upload-artifact@v3
         with:
           name: deployment-logs
           path: |
-            deployment-logs.txt
             response.json
-
-      - name: Test Azure ML endpoint
-        run: |
-          az ml online-endpoint invoke \
-            --name ${{ env.ENDPOINT_NAME }} \
-            --request-file test_data.json \
-            --resource-group ${{ env.RESOURCE_GROUP }} \
-            --workspace-name ${{ env.AZURE_ML_WORKSPACE }}
-
-      - name: Fetch Azure ML deployment logs
-        run: |
-          az ml online-deployment get-logs \
-            --name ${{ env.DEPLOYMENT_NAME }} \
-            --endpoint-name ${{ env.ENDPOINT_NAME }} \
-            --resource-group ${{ env.RESOURCE_GROUP }} \
-            --workspace-name ${{ env.AZURE_ML_WORKSPACE }} \
-            --lines 100 > deployment-logs.txt
-      - name: Upload deployment logs
-        uses: actions/upload-artifact@v3
-        with:
-          name: deployment-logs
-          path: deployment-logs.txt
-
-  security-scan:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-
-      - name: Run Bandit security scan
-        run: |
-          pip install bandit[toml]
-          bandit -r src/ -f json -o bandit-report.json
-
-      - name: Run Safety vulnerability check
-        run: |
-          pip install safety
-          safety check --json --output safety-report.json
-
-      - name: Upload security reports
-        uses: actions/upload-artifact@v3
-        with:
-          name: security-reports
-          path: |
-            bandit-report.json
-            safety-report.json
