@@ -79,11 +79,29 @@ jobs:
       - name: Smoke Test Endpoint
         run: |
           echo "Running post-deployment health check..."
+
+          # Validate required secrets
+          if [ -z "${{ secrets.AZURE_API_KEY }}" ]; then
+            echo "❌ Missing AZURE_API_KEY secret!"
+            exit 1
+          fi
+
+          # Ensure test data exists
+          if [ ! -f "test_data.json" ]; then
+            echo "❌ test_data.json not found!"
+            exit 1
+          fi
+
+          # Call the endpoint
+          echo "Invoking endpoint: ${{ steps.get_uri.outputs.uri }}"
           curl -X POST "${{ steps.get_uri.outputs.uri }}" \
             -H "Content-Type: application/json" \
             -H "Authorization: Bearer ${{ secrets.AZURE_API_KEY }}" \
-            -d '{"sample_input": "test"}' \
-            --fail
+            -d "@test_data.json" \
+            --fail -o response.json -s
+
+          echo "✅ Smoke test succeeded! Endpoint response:"
+          cat response.json
 
       - name: 📤 Upload Logs
         if: always()
