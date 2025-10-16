@@ -66,18 +66,20 @@ jobs:
             --resource-group mlops-rg \
             --file deployment.yml
 
-      - name: 🧪 Smoke Test Endpoint
+      - name: Get Scoring URI
+        id: get_uri
+        run: |
+          URI=$(az ml online-endpoint show \
+            --name scotia-fraud-detection-endpoint \
+            --workspace-name mlops-scotia-ws2 \
+            --resource-group mlops-rg \
+            --query "scoring_uri" -o tsv)
+          echo "uri=$URI" >> $GITHUB_OUTPUT
+
+      - name: Smoke Test Endpoint
         run: |
           echo "Running post-deployment health check..."
-          if [ -z "${{ secrets.SCORING_URI }}" ]; then
-            echo "❌ SCORING_URI secret not set."
-            exit 1
-          fi
-          if [ -z "${{ secrets.AZURE_API_KEY }}" ]; then
-            echo "❌ AZURE_API_KEY secret not set."
-            exit 1
-          fi
-          curl -X POST "${{ secrets.SCORING_URI }}" \
+          curl -X POST "${{ steps.get_uri.outputs.uri }}" \
             -H "Content-Type: application/json" \
             -H "Authorization: Bearer ${{ secrets.AZURE_API_KEY }}" \
             -d '{"sample_input": "test"}' \
