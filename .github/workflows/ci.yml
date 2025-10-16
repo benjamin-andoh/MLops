@@ -2,7 +2,7 @@
 name: CI
 on:
   push:
-    branches: [ main ]
+    branches: [main]
 jobs:
   test-and-build:
     runs-on: ubuntu-latest
@@ -11,16 +11,11 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
-          python-version: '3.10'
+          python-version: "3.10"
       - name: Install deps
         run: |
           python -m pip install --upgrade pip
-          pip install -r <(python - <<'PY'
-            import yaml
-            c=yaml.safe_load(open('environment/conda.yml'))
-            print("\\n".join(c['dependencies'][-1]['pip']))
-            PY
-            )
+          pip install -r requirements.txt
       - name: Run unit tests
         run: |
           pytest -q || true
