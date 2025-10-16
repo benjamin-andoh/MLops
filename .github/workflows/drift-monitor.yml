@@ -1,65 +1,59 @@
+# File: .github/workflows/drift-monitor.yml
 name: Drift Monitor
 
 on:
-    schedule:
-        - cron: "0 6 * * *" # daily at 06:00 UTC
-    workflow_dispatch:
+  schedule:
+    - cron: '0 6 * * *' # Runs daily at 06:00 UTC
+  workflow_dispatch:     # Manual trigger from GitHub UI
+
+permissions:
+  contents: read
+  actions: read
+  id-token: write
 
 jobs:
-    drift:
-        runs-on: ubuntu-latest
-        steps:
-            - name: Checkout
-              uses: actions/checkout@v4
+  drift-monitor:
+    name: Run Data & Model Drift Detection
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
 
-            - name: Set up Python 3.10
-              uses: actions/setup-python@v5
-              with:
-                  python-version: "3.10"
+    steps:
+      - name: 🧩 Checkout Repository
+        uses: actions/checkout@v4
 
-            - name: Install dependencies
-              run: |
-                  python -m pip install --upgrade pip
-                  pip install -r requirements.txt
+      - name: 🐍 Set Up Python 3.10
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+          cache: 'pip'
 
-            - name: Prepare output dir
-              run: |
-                  mkdir -p data/drift
+      - name: 📦 Install Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
 
-            - name: Run drift monitor
-              env:
-                  BASELINE_PATH: data/features/feat_v1.parquet
-                  CURRENT_PATH: data/features/feat_v1.parquet
-                  DRIFT_REPORT: data/drift/report.json
-              run: |
-                  python scripts/drift_monitor.py
-                        - name: Checkout
-                            uses: actions/checkout@v4
+      - name: 📁 Prepare Output Directory
+        run: mkdir -p data/drift
 
-                        - name: Set up Python 3.10
-                            uses: actions/setup-python@v5
-                            with:
-                                python-version: "3.10"
+      - name: 🔍 Run Drift Monitor Script
+        run: |
+          echo "Starting drift detection..."
+          python scripts/drift_monitor.py
+        env:
+          ENVIRONMENT: production
+          LOG_LEVEL: INFO
 
-                        - name: Install dependencies
-                            run: |
-                                python -m pip install --upgrade pip
-                                pip install -r requirements.txt
+      - name: 📤 Upload Drift Report
+        if: success() || failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: drift-report
+          path: data/drift/report.json
 
-                        - name: Prepare output dir
-                            run: |
-                                mkdir -p data/drift
+      - name: ✅ Notify Success
+        if: success()
+        run: echo "✅ Drift monitoring completed successfully."
 
-                        - name: Run drift monitor
-                            env:
-                                BASELINE_PATH: data/features/feat_v1.parquet
-                                CURRENT_PATH: data/features/feat_v1.parquet
-                                DRIFT_REPORT: data/drift/report.json
-                            run: |
-                                python scripts/drift_monitor.py
-
-                        - name: Upload drift report
-                            uses: actions/upload-artifact@v4
-                            with:
-                                name: drift-report
-                                path: data/drift/report.json
+      - name: ⚠️ Notify Failure
+        if: failure()
+        run: echo "❌ Drift monitor failed. Check logs for details."
