@@ -292,16 +292,6 @@ See `docs/ADVANCED_MONITORING.md` for comprehensive KQL queries for:
 - Error rate tracking
 - Drift detection alerts
 
-## Cleanup Completed
-
-### Removed Redundant Files/Directories
-
-✅ `sample.json` - Redundant with `test_data.json`
-✅ `environment/conda.yml` - Redundant with root `environment.yml`
-✅ `app/model/` - Redundant with `models/run_local/`
-✅ `.azure-pipelines/` - Using GitHub Actions instead
-✅ `azureml/endpoint.yml` - Using `deployment.yml` instead
-
 ### Organized Structure
 
 ✅ All deployment configs at root level

@@ -10,7 +10,3 @@ environment:
   conda_file: environment.yml
 instance_type: Standard_DS2_v2
 instance_count: 1
-# scale_settings:
-#   type: automatic
-#   min_instances: 1
-#   max_instances: 3
