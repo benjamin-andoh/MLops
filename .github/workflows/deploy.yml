@@ -58,7 +58,9 @@ jobs:
         run: flake8 src/
 
       - name: Run MyPy type checker
-        run: mypy src/
+        run: |
+          # Ensure mypy treats 'src' as package root and avoids duplicate module names
+          PYTHONPATH=src mypy --explicit-package-bases src/
 
   build-and-test-docker:
     runs-on: ubuntu-latest
