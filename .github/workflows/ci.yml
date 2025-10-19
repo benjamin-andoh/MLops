@@ -30,8 +30,16 @@ jobs:
         env:
           ACR_NAME: ${{ secrets.ACR_NAME }}
         run: |
-          docker build -t \
-            $ACR_NAME/fraud-model:ci-${{ github.sha }} .
+          # Use a safe, valid image tag. If ACR_NAME is not provided, fall back to local image name 'fraud-model'
+          SHORT_SHA=$(echo "${{ github.sha }}" | cut -c1-12)
+          if [ -n "$ACR_NAME" ]; then
+            IMAGE_TAG="$ACR_NAME/fraud-model:ci-$SHORT_SHA"
+          else
+            IMAGE_TAG="fraud-model:ci-$SHORT_SHA"
+          fi
+
+          echo "Building Docker image with tag: $IMAGE_TAG"
+          docker build -t "$IMAGE_TAG" .
           echo "docker build done"
 
       - name: Push image to ACR
@@ -42,9 +50,19 @@ jobs:
           ACR_USERNAME: ${{ secrets.ACR_USERNAME }}
           ACR_PASSWORD: ${{ secrets.ACR_PASSWORD }}
         run: |
-          echo $ACR_PASSWORD | docker login \
-            $ACR_LOGIN_SERVER -u $ACR_USERNAME --password-stdin
-          docker tag $ACR_NAME/fraud-model:ci-${{ github.sha }} \
-            $ACR_LOGIN_SERVER/$ACR_NAME/fraud-model:ci-${{ github.sha }}
-          docker push \
-            $ACR_LOGIN_SERVER/$ACR_NAME/fraud-model:ci-${{ github.sha }}
+          # Only attempt login and push if ACR variables are set
+          if [ -z "$ACR_NAME" ] || [ -z "$ACR_LOGIN_SERVER" ] || [ -z "$ACR_USERNAME" ] || [ -z "$ACR_PASSWORD" ]; then
+            echo "ACR credentials or names not set; skipping push to ACR"
+            exit 0
+          fi
+
+          SHORT_SHA=$(echo "${{ github.sha }}" | cut -c1-12)
+          LOCAL_IMAGE="$ACR_NAME/fraud-model:ci-$SHORT_SHA"
+          REMOTE_IMAGE="$ACR_LOGIN_SERVER/$ACR_NAME/fraud-model:ci-$SHORT_SHA"
+
+          # Perform non-interactive docker login using --password-stdin
+          echo "$ACR_PASSWORD" | docker login "$ACR_LOGIN_SERVER" -u "$ACR_USERNAME" --password-stdin
+
+          # Tag and push
+          docker tag "$LOCAL_IMAGE" "$REMOTE_IMAGE"
+          docker push "$REMOTE_IMAGE"
