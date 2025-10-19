@@ -39,6 +39,8 @@ jobs:
             - name: Install dependencies
               run: |
                   python -m pip install --upgrade pip
+                                    # Install runtime dependencies so pytest (run by pre-commit) can import project packages
+                                    if [ -f requirements.txt ]; then pip install -r requirements.txt --cache-dir ~/.cache/pip; fi
                   # Prefer a plain requirements-dev.txt on CI (cross-platform). If it's present, use it.
                   if [ -f requirements-dev.txt ]; then
                       pip install --no-deps -r requirements-dev.txt --cache-dir ~/.cache/pip
