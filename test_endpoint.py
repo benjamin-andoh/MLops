@@ -1,5 +1,6 @@
-import requests
 import time
+
+import requests
 
 # Test data
 test_features = {
@@ -7,7 +8,7 @@ test_features = {
     "hour_of_day": 14,
     "avg_monthly_spend": 500.0,
     "customer_tenure_days": 365,
-    "num_prev_tx_24h": 5
+    "num_prev_tx_24h": 5,
 }
 
 print("Sending request with features:", test_features)
@@ -20,7 +21,7 @@ attempt = 0
 while attempt < max_retries:
     attempt += 1
     print(f"\nAttempt {attempt} of {max_retries}")
-    
+
     try:
         url = "http://127.0.0.1:8080/predict"
 
@@ -32,7 +33,7 @@ while attempt < max_retries:
         response = requests.post(url, json=request_data, timeout=10)
         print("Status code:", response.status_code)
         print("Response headers:", response.headers)
-        
+
         if response.status_code == 200:
             print("Success! Response:", response.json())
             break

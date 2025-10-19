@@ -88,7 +88,9 @@ This project aims to build, deploy, and monitor a machine learning solution for 
 ## Production MLOps Roadmap
 
 ### Phase 1: Azure ML Deployment ✅
+
 1. **Model Registration & Versioning**:
+
    ```powershell
    az ml model create --name fraud-detector --version 1 --path models/run_local/model.joblib
    ```
@@ -100,12 +102,15 @@ This project aims to build, deploy, and monitor a machine learning solution for 
    ```
 
 ### Phase 2: Monitoring & Management
+
 1. **Application Insights Integration**:
+
    - Enable monitoring in Azure ML workspace
    - Configure custom metrics for prediction accuracy
    - Set up alerts for latency > 2s or error rate > 5%
 
 2. **Data & Model Drift Detection**:
+
    ```powershell
    python scripts/drift_monitor.py --baseline-data data/raw/txs.csv --new-data <incoming_data>
    ```
@@ -116,7 +121,9 @@ This project aims to build, deploy, and monitor a machine learning solution for 
    - Alert on model performance degradation
 
 ### Phase 3: Scaling & High Availability
+
 1. **Auto-scaling Configuration**:
+
    ```yaml
    # In deployment.yml
    scale_settings:
@@ -127,6 +134,7 @@ This project aims to build, deploy, and monitor a machine learning solution for 
    ```
 
 2. **Multi-region Deployment**:
+
    - Deploy endpoints in multiple Azure regions
    - Use Azure Traffic Manager for load balancing
    - Configure disaster recovery procedures
@@ -137,6 +145,7 @@ This project aims to build, deploy, and monitor a machine learning solution for 
    - Implement request/response transformation
 
 ### Phase 4: CI/CD & Automation
+
 1. **Automated Training Pipeline** (see `.azure-pipelines/training-pipeline.yml`)
 2. **Continuous Deployment** (see `.github/workflows/deploy.yml`)
 3. **Model Validation & Testing**:
@@ -145,7 +154,9 @@ This project aims to build, deploy, and monitor a machine learning solution for 
    - Rollback capabilities
 
 ### Phase 5: Security & Compliance
+
 1. **Identity & Access Management**:
+
    - Use managed identities for Azure resources
    - Implement RBAC for model access
    - Enable audit logging
@@ -156,6 +167,7 @@ This project aims to build, deploy, and monitor a machine learning solution for 
    - GDPR compliance for model explanations
 
 ### Phase 6: Cost Optimization
+
 1. **Resource Management**:
    - Use spot instances for training workloads
    - Implement auto-shutdown for dev environments
@@ -166,6 +178,7 @@ This project aims to build, deploy, and monitor a machine learning solution for 
 ## Quick Commands Reference
 
 ### Local Development
+
 ```powershell
 # Start local API
 uvicorn src.serve:app --host 127.0.0.1 --port 8080
@@ -179,6 +192,7 @@ docker run -p 8080:8080 fraud-api:latest
 ```
 
 ### Azure Deployment
+
 ```powershell
 # Deploy to Azure ML
 az ml online-deployment update --name fraud-deploy --endpoint-name fraud-endpoint --file deployment.yml --resource-group mlops-rg --workspace-name scotia-mlops-ws
@@ -195,20 +209,24 @@ az ml online-endpoint invoke --name fraud-endpoint --request-file test_data.json
 This project includes a scheduled GitHub Actions workflow (`.github/workflows/retrain-and-deploy.yml`) that retrains the fraud detection model, registers it in Azure ML, and redeploys it to the managed endpoint.
 
 **How it works:**
+
 - Runs every Monday at 05:00 UTC (or manually via GitHub Actions > Run workflow)
 - Retrains the model using `src/train.py` and the latest features data
 - Registers the new model in Azure ML workspace
 - Updates the endpoint deployment with the new model
 
 **Customizing:**
+
 - Change the schedule by editing the `cron` value in the workflow YAML
 - Update training data path or script arguments as needed
 - Monitor workflow runs and logs in the GitHub Actions tab
 
 **Manual trigger:**
+
 - Go to GitHub Actions > Retrain and Deploy Model > Run workflow
 
 **Requirements:**
+
 - Azure credentials must be set in repository secrets as `AZURE_CREDENTIALS`
 - Training script must output model to `models/run_local/model.joblib`
 - Deployment configuration is read from `deployment.yml`
@@ -216,3 +234,44 @@ This project includes a scheduled GitHub Actions workflow (`.github/workflows/re
 ---
 
 For questions or contributions, please contact the project maintainer.
+
+## Developer tooling: pre-commit hooks
+
+Quick setup (Windows PowerShell):
+
+```powershell
+# activate venv
+.\venv\Scripts\Activate.ps1
+# install dev deps and enable hooks
+pip install -r requirements-dev.txt
+pre-commit install
+pre-commit run --all-files
+```
+
+Quick setup (Linux/macOS):
+
+```bash
+python -m venv venv
+source venv/bin/activate
+pip install -r requirements-dev.txt
+pre-commit install
+pre-commit run --all-files
+```
+
+You can also use the Makefile target on systems that have make:
+
+```bash
+make precommit-install
+```
+
+This repository uses `pre-commit` to run formatters, linters and tests before commits. On Windows, run the following from a PowerShell with your virtualenv activated:
+
+```powershell
+# create and activate venv (if needed)
+python -m venv venv; .\venv\Scripts\Activate.ps1
+
+# install dependencies and set up git hooks
+.\scripts\install_precommit.ps1
+```
+
+After that `pre-commit` will run `black`, `isort`, `flake8` and `pytest` automatically on each commit. If a hook fails, fix the issues locally and re-run the failing checks or re-run the installer script.

@@ -1,17 +1,23 @@
-import os
 import json
-import joblib
-import traceback
-import pandas as pd
-from features import transform_features_single
-from opencensus.ext.azure.log_exporter import AzureLogHandler
 import logging
+import os
+import traceback
+
+import joblib
+
+# pandas not required in this module; remove unused import
+from opencensus.ext.azure.log_exporter import AzureLogHandler
+
+from features import transform_features_single
 
 model = None
 logger = logging.getLogger(__name__)
-if os.getenv('AML_APP_INSIGHTS_KEY'):
-    logger.addHandler(AzureLogHandler(connection_string=f'InstrumentationKey={os.getenv("AML_APP_INSIGHTS_KEY")}'))
+if os.getenv("AML_APP_INSIGHTS_KEY"):
+    logger.addHandler(
+        AzureLogHandler(connection_string=f'InstrumentationKey={os.getenv("AML_APP_INSIGHTS_KEY")}')
+    )
 logger.setLevel(logging.INFO)
+
 
 def init():
     """Called once at container startup in managed endpoints.
@@ -27,7 +33,7 @@ def init():
         # List files for debugging
         try:
             print("Model directory contents:", os.listdir(model_dir))
-            for root, dirs, files in os.walk(model_dir):
+            for root, _dirs, files in os.walk(model_dir):
                 print(root, "->", files)
         except Exception as e:
             print("Could not list model dir contents:", e)
@@ -75,13 +81,17 @@ def run(raw_request):
         if model is not None and hasattr(model, "feature_names_in_"):
             cols = list(model.feature_names_in_)
             df = df.reindex(columns=cols, fill_value=0)
-        
+
         # Predict
-        proba = float(model.predict_proba(df)[0, 1]) if hasattr(model, "predict_proba") else float(model.predict(df)[0])
+        proba = (
+            float(model.predict_proba(df)[0, 1])
+            if hasattr(model, "predict_proba")
+            else float(model.predict(df)[0])
+        )
         result = {"pred_proba": float(proba)}
         logger.info(f"Prediction result: {result}")
         return result
-        
+
     except Exception as e:
         logger.error(f"Error in run(): {str(e)}")
         traceback.print_exc()

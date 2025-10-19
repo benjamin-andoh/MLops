@@ -29,7 +29,10 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
-          pip install pytest pytest-cov
+          # Install dev/test dependencies needed for running tests in CI
+          if [ -f requirements-dev.txt ]; then pip install -r requirements-dev.txt; fi
+          # Ensure pytest-cov is available for coverage CLI args
+          pip install pytest-cov
 
       - name: Run unit tests
         run: pytest tests/ -v --cov=src/ --cov-report=xml
@@ -58,7 +61,9 @@ jobs:
         run: flake8 src/
 
       - name: Run MyPy type checker
-        run: mypy src/
+        run: |
+          # Ensure mypy treats 'src' as package root and avoids duplicate module names
+          PYTHONPATH=src mypy --explicit-package-bases src/
 
   build-and-test-docker:
     runs-on: ubuntu-latest
@@ -66,20 +71,51 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Build Docker image
-        run: docker build -t fraud-api:latest .
+      - name: Docker diagnostics
+        run: |
+          echo "--- docker version ---"
+          docker --version || true
+          echo "--- docker info ---"
+          docker info || true
+          echo "--- disk usage ---"
+          df -h || true
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+
+      - name: Build Docker image (buildx)
+        uses: docker/build-push-action@v4
+        with:
+          context: .
+          push: false
+          load: true
+          tags: fraud-api:latest
 
       - name: Test Docker container
         run: |
-          docker run -d -p 8080:8080 --name fraud-api-test fraud-api:latest
+          # Run container in background
+          # Map host 8080 to container 8000 (uvicorn listens on 8000)
+          docker run -d -p 8080:8000 --name fraud-api-test fraud-api:latest
+          # Give the app a short time to start
           sleep 10
-          curl -X POST http://localhost:8080/predict \
+
+          # Perform the request; if it fails, dump useful diagnostics
+          if ! curl -sS -X POST http://localhost:8080/predict \
             -H "Content-Type: application/json" \
-            -d '{"features": {"amount": 100, "hour_of_day": 14,
-                 "avg_monthly_spend": 500,
-                 "customer_tenure_days": 365,
-                 "num_prev_tx_24h": 5}}'
-          docker stop fraud-api-test
+            -d '{"features": {"amount": 100, "hour_of_day": 14, "avg_monthly_spend": 500, "customer_tenure_days": 365, "num_prev_tx_24h": 5}}'; then
+            echo "ERROR: request failed — dumping container logs and status"
+            echo "--- container logs ---"
+            docker logs fraud-api-test || true
+            echo "--- docker ps -a ---"
+            docker ps -a || true
+            echo "--- docker inspect fraud-api-test ---"
+            docker inspect fraud-api-test || true
+            # Ensure the job fails so CI surfaces the issue
+            exit 1
+          fi
+          # Stop and remove container after successful check
+          docker stop fraud-api-test || true
+          docker rm fraud-api-test || true
 
   deploy-to-azure:
     runs-on: ubuntu-latest

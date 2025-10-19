@@ -1,0 +1,24 @@
+[tool.flake8]
+max-line-length = 110
+extend-ignore = ["E203", "W503"]
+
+[tool.black]
+line-length = 110
+skip-string-normalization = true
+
+[tool.isort]
+profile = "black"
+line_length = 110
+include_trailing_comma = true
+force_grid_wrap = 0
+use_parentheses = true
+
+[tool.mypy]
+python_version = "3.10"
+# Avoid noisy failures for third-party packages that don't have stubs in CI
+ignore_missing_imports = true
+# Allow packages without __init__.py (common in src/ layouts)
+namespace_packages = true
+
+
+
