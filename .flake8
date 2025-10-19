@@ -1,0 +1,10 @@
+[flake8]
+# Use Black-compatible defaults and 
+#avoid ignoring important errors
+max-line-length = 110
+# Keep Black compatibility ignores only
+extend-ignore = E203, W503
+# Per-file ignores for tests 
+#(docstrings and security checks are noisy in tests)
+per-file-ignores =
+    tests/*: D, S101
